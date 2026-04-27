@@ -1,4 +1,7 @@
 package com.sebastian.agent.orchestrator.domain.model;
 
-public class ChatIntent {
+public enum ChatIntent {
+    PROFILE,
+    CONTACT,
+    UNCLEAR
 }

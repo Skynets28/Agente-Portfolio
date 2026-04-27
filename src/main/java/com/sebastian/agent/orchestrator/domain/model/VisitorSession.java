@@ -1,4 +1,13 @@
 package com.sebastian.agent.orchestrator.domain.model;
 
-public class VisitorSession {
+import java.time.Instant;
+
+public record VisitorSession(
+        String sessionId,
+        AgentType currentAgent,
+        int messageCount,
+        boolean contactCaptureStarted,
+        Instant createdAt,
+        Instant updatedAt
+) {
 }

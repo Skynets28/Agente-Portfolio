@@ -1,4 +1,9 @@
 package com.sebastian.agent.orchestrator.domain.ports;
 
-public class RateLimitPolicy {
+import com.sebastian.agent.orchestrator.domain.model.ChatIntent;
+import com.sebastian.agent.orchestrator.domain.model.VisitorSession;
+
+public interface RateLimitPolicy {
+
+    boolean isAllowed(VisitorSession session, ChatIntent intent);
 }

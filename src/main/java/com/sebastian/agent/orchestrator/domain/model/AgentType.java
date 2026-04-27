@@ -1,4 +1,7 @@
 package com.sebastian.agent.orchestrator.domain.model;
 
-public class AgentType {
+public enum AgentType {
+    PROFILE,
+    CONTACT,
+    ORCHESTRATOR
 }
