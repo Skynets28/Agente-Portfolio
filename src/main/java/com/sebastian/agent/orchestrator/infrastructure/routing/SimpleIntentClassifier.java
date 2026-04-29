@@ -3,9 +3,11 @@ package com.sebastian.agent.orchestrator.infrastructure.routing;
 import com.sebastian.agent.orchestrator.domain.model.ChatIntent;
 import com.sebastian.agent.orchestrator.domain.model.VisitorSession;
 import com.sebastian.agent.orchestrator.domain.ports.IntentClassifier;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile({"simple", "redis"})
 public class SimpleIntentClassifier implements IntentClassifier {
     @Override
     public  ChatIntent classify(String message) {

@@ -2,6 +2,7 @@ package com.sebastian.agent.orchestrator.infrastructure.session;
 
 import com.sebastian.agent.orchestrator.domain.model.VisitorSession;
 import com.sebastian.agent.orchestrator.domain.ports.SessionRepository;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
+@Profile("simple")
 public class InMemorySessionRepository implements SessionRepository {
     private final Map<String, VisitorSession> sessions = new ConcurrentHashMap<>();
 

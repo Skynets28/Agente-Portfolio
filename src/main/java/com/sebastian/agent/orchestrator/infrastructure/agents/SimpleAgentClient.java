@@ -2,9 +2,11 @@ package com.sebastian.agent.orchestrator.infrastructure.agents;
 
 import com.sebastian.agent.orchestrator.domain.model.AgentType;
 import com.sebastian.agent.orchestrator.domain.ports.AgentClient;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile({"simple", "redis"})
 public class SimpleAgentClient implements AgentClient {
     @Override
     public String sendMessage(AgentType agentType, String sessionId, String message) {

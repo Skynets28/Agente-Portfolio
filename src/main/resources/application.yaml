@@ -1,3 +1,21 @@
 spring:
   application:
     name: orchestrator
+  profiles:
+    active: simple
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+orchestrator:
+  session:
+    ttl: 2h
+    key-prefix: "session:"
+  rate-limit:
+    max-messages-per-session: 40
+    key-prefix: "rl:"
+  agents:
+    profile-base-url: http://localhost:9091
+    contact-base-url: http://localhost:9092
+
