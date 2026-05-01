@@ -62,6 +62,7 @@ class ChatControllerTest {
         assertThat(orchestratorUseCase.lastSessionId).isEqualTo("session-1");
         assertThat(orchestratorUseCase.lastMessage).isEqualTo("Tell me about Sebastian");
         assertThat(orchestratorUseCase.lastSection).isEqualTo("hero");
+        assertThat(orchestratorUseCase.lastClientIp).isNotBlank();
     }
 
     @Test
@@ -91,6 +92,7 @@ class ChatControllerTest {
         assertThat(orchestratorUseCase.lastSessionId).isNull();
         assertThat(orchestratorUseCase.lastMessage).isEqualTo("Quiero dejarle un mensaje");
         assertThat(orchestratorUseCase.lastSection).isEqualTo("contact");
+        assertThat(orchestratorUseCase.lastClientIp).isNotBlank();
     }
 
     @Test
@@ -160,17 +162,19 @@ class ChatControllerTest {
         private String lastSessionId;
         private String lastMessage;
         private String lastSection;
+        private String lastClientIp;
 
         StubOrchestratorUseCase() {
             super(null, null, null, null);
         }
 
         @Override
-        public OrchestratorResult handle(String sessionId, String message, String section) {
+        public OrchestratorResult handle(String sessionId, String message, String section, String clientIp) {
             wasCalled = true;
             lastSessionId = sessionId;
             lastMessage = message;
             lastSection = section;
+            lastClientIp = clientIp;
             return result;
         }
 
@@ -180,6 +184,7 @@ class ChatControllerTest {
             lastSessionId = null;
             lastMessage = null;
             lastSection = null;
+            lastClientIp = null;
         }
     }
 }

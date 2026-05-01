@@ -1,7 +1,7 @@
 package com.sebastian.agent.orchestrator.infrastructure.ratelimit;
 
 import com.sebastian.agent.orchestrator.domain.model.ChatIntent;
-import com.sebastian.agent.orchestrator.domain.model.VisitorSession;
+import com.sebastian.agent.orchestrator.domain.model.RateLimitContext;
 import com.sebastian.agent.orchestrator.domain.ports.RateLimitPolicy;
 import com.sebastian.agent.orchestrator.infrastructure.config.OrchestratorProperties;
 import org.springframework.context.annotation.Profile;
@@ -17,10 +17,10 @@ public class SimpleRateLimitPolicy implements RateLimitPolicy {
     }
 
     @Override
-    public boolean isAllowed(VisitorSession session, ChatIntent intent) {
-        if (intent == ChatIntent.CONTACT) {
+    public boolean isAllowed(RateLimitContext rateLimitContext) {
+        if (rateLimitContext.intent() == ChatIntent.CONTACT) {
             return true;
         }
-        return session.messageCount() < orchestratorProperties.rateLimit().maxMessagesPerSession();
+        return rateLimitContext.messageCount() < orchestratorProperties.rateLimit().maxMessagesPerSession();
     }
 }

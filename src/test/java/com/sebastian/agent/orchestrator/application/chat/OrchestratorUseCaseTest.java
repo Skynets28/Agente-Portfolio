@@ -26,11 +26,11 @@ class OrchestratorUseCaseTest {
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
-                (session, intent) -> true,
+                context -> true,
                 agentClient
         );
 
-        OrchestratorResult result = useCase.handle("session-1", "Tell me about Sebastian", "hero");
+        OrchestratorResult result = useCase.handle("session-1", "Tell me about Sebastian", "hero", "127.0.0.1");
 
         assertThat(result.sessionId()).isEqualTo("session-1");
         assertThat(result.reply()).isEqualTo("profile reply");
@@ -52,11 +52,11 @@ class OrchestratorUseCaseTest {
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.UNCLEAR,
-                (session, intent) -> true,
+                context -> true,
                 agentClient
         );
 
-        OrchestratorResult result = useCase.handle("session-2", "hola", "hero");
+        OrchestratorResult result = useCase.handle("session-2", "hola", "hero", "127.0.0.1");
 
         assertThat(result.sessionId()).isEqualTo("session-2");
         assertThat(result.intent()).isEqualTo(ChatIntent.UNCLEAR);
@@ -77,11 +77,11 @@ class OrchestratorUseCaseTest {
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
-                (session, intent) -> false,
+                context -> false,
                 agentClient
         );
 
-        OrchestratorResult result = useCase.handle("session-3", "Tell me about Java", "projects");
+        OrchestratorResult result = useCase.handle("session-3", "Tell me about Java", "projects", "127.0.0.1");
 
         assertThat(result.sessionId()).isEqualTo("session-3");
         assertThat(result.intent()).isEqualTo(ChatIntent.PROFILE);
@@ -102,11 +102,11 @@ class OrchestratorUseCaseTest {
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.CONTACT,
-                (session, intent) -> true,
+                context -> true,
                 agentClient
         );
 
-        OrchestratorResult result = useCase.handle("session-4", "I want to contact Sebastian", "contact");
+        OrchestratorResult result = useCase.handle("session-4", "I want to contact Sebastian", "contact", "127.0.0.1");
 
         assertThat(result.sessionId()).isEqualTo("session-4");
         assertThat(result.reply()).isEqualTo("contact reply");
@@ -130,11 +130,11 @@ class OrchestratorUseCaseTest {
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
-                (session, intent) -> true,
+                context -> true,
                 new RecordingAgentClient("profile reply")
         );
 
-        OrchestratorResult result = useCase.handle(" ", "Tell me about Sebastian", "hero");
+        OrchestratorResult result = useCase.handle(" ", "Tell me about Sebastian", "hero", "127.0.0.1");
 
         assertThat(result.sessionId()).isNotBlank();
         assertThat(result.sessionId()).isNotEqualTo(" ");
@@ -156,11 +156,11 @@ class OrchestratorUseCaseTest {
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
-                (session, intent) -> true,
+                context -> true,
                 new RecordingAgentClient("profile reply")
         );
 
-        useCase.handle("session-5", "Tell me about projects", "projects");
+        useCase.handle("session-5", "Tell me about projects", "projects", "127.0.0.1");
 
         assertThat(sessionRepository.findById("session-5"))
                 .get()

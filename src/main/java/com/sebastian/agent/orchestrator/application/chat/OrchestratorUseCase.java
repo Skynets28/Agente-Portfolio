@@ -1,9 +1,6 @@
 package com.sebastian.agent.orchestrator.application.chat;
 
-import com.sebastian.agent.orchestrator.domain.model.AgentType;
-import com.sebastian.agent.orchestrator.domain.model.ChatIntent;
-import com.sebastian.agent.orchestrator.domain.model.OrchestratorResult;
-import com.sebastian.agent.orchestrator.domain.model.VisitorSession;
+import com.sebastian.agent.orchestrator.domain.model.*;
 import com.sebastian.agent.orchestrator.domain.ports.AgentClient;
 import com.sebastian.agent.orchestrator.domain.ports.IntentClassifier;
 import com.sebastian.agent.orchestrator.domain.ports.RateLimitPolicy;
@@ -32,7 +29,7 @@ public class OrchestratorUseCase {
 
     }
 
-    public OrchestratorResult handle(String sessionId, String message, String section) {
+    public OrchestratorResult handle(String sessionId, String message, String section, String clientIp) {
         String resolvedSessionId = resolveSessionId(sessionId);
 
         VisitorSession session = findOrCreateSession(resolvedSessionId);
@@ -40,7 +37,14 @@ public class OrchestratorUseCase {
 
         ChatIntent intent = intentClassifier.classify(message);
 
-        if (!rateLimitPolicy.isAllowed(updatedSession, intent)) {
+        RateLimitContext rateLimitContext = createRateLimitContext(
+                resolvedSessionId,
+                clientIp,
+                intent,
+                updatedSession.messageCount()
+        );
+
+        if (!rateLimitPolicy.isAllowed(rateLimitContext)) {
             VisitorSession savedSession = sessionRepository.save(
                     updateSessionAgent(updatedSession, AgentType.ORCHESTRATOR)
             );
@@ -145,5 +149,19 @@ public class OrchestratorUseCase {
                 session.createdAt(),
                 Instant.now()
         );
+    }
+
+    private RateLimitContext createRateLimitContext (
+            String sessionId,
+            String clientIp,
+            ChatIntent intent,
+            int messageCount) {
+
+        return new RateLimitContext(
+                sessionId,
+                clientIp,
+                intent,
+                messageCount
+                );
     }
 }
