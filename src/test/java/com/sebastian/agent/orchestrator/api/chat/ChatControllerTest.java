@@ -1,9 +1,7 @@
 package com.sebastian.agent.orchestrator.api.chat;
 
 import com.sebastian.agent.orchestrator.application.chat.OrchestratorUseCase;
-import com.sebastian.agent.orchestrator.domain.model.AgentType;
-import com.sebastian.agent.orchestrator.domain.model.ChatIntent;
-import com.sebastian.agent.orchestrator.domain.model.OrchestratorResult;
+import com.sebastian.agent.orchestrator.domain.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,7 +37,8 @@ class ChatControllerTest {
                 "profile reply",
                 ChatIntent.PROFILE,
                 AgentType.PROFILE,
-                "ALLOWED"
+                RateLimitStatus.ALLOWED,
+                ResponseType.AGENT_REPLY
         );
 
         mockMvc.perform(post("/api/agent/chat")
@@ -56,7 +55,8 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.reply").value("profile reply"))
                 .andExpect(jsonPath("$.intent").value("PROFILE"))
                 .andExpect(jsonPath("$.agentUsed").value("PROFILE"))
-                .andExpect(jsonPath("$.rateLimitStatus").value("ALLOWED"));
+                .andExpect(jsonPath("$.rateLimitStatus").value("ALLOWED"))
+                .andExpect(jsonPath("$.responseType").value("AGENT_REPLY"));
 
         assertThat(orchestratorUseCase.wasCalled).isTrue();
         assertThat(orchestratorUseCase.lastSessionId).isEqualTo("session-1");
@@ -72,7 +72,8 @@ class ChatControllerTest {
                 "contact reply",
                 ChatIntent.CONTACT,
                 AgentType.CONTACT,
-                "ALLOWED"
+                RateLimitStatus.ALLOWED,
+                ResponseType.AGENT_REPLY
         );
 
         mockMvc.perform(post("/api/agent/chat")
@@ -86,7 +87,8 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sessionId").value("generated-session"))
                 .andExpect(jsonPath("$.intent").value("CONTACT"))
-                .andExpect(jsonPath("$.agentUsed").value("CONTACT"));
+                .andExpect(jsonPath("$.agentUsed").value("CONTACT"))
+                .andExpect(jsonPath("$.responseType").value("AGENT_REPLY"));
 
         assertThat(orchestratorUseCase.wasCalled).isTrue();
         assertThat(orchestratorUseCase.lastSessionId).isNull();

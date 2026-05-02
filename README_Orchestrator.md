@@ -6,6 +6,9 @@ Este proyecto implementa el **Orchestrator Agent** del portafolio multi-agente.
 
 Su responsabilidad es actuar como **único punto de entrada externo** para el chat del sitio y coordinar la conversación entre agentes especializados.
 
+Este repositorio contiene **solo el servicio Orchestrator**.  
+Profile Agent, Contact Agent y frontend se desarrollan como proyectos/servicios separados para poder correr en puertos distintos y comunicarse mediante A2A real.
+
 Este repositorio **no** existe para construir una demo rápida y frágil.
 Existe para practicar y estudiar diseño real de agentes con:
 
@@ -39,6 +42,21 @@ Dentro de la arquitectura general del portafolio, el Orchestrator:
 
 - **Contact Agent**  
   Captura intención de contacto y guía al visitante para dejar un mensaje estructurado.
+
+### Alcance de este repositorio
+
+Este repo no contiene el código de Profile Agent, Contact Agent ni frontend.  
+Aquí solo se implementan:
+
+- endpoint público del chat
+- manejo de sesión de orquestación
+- rate limiting
+- clasificación de intención
+- contrato interno de delegación
+- clientes/adaptadores para hablar con sub-agentes remotos
+- normalización de respuesta hacia el frontend
+
+La aplicación no se levanta localmente como flujo normal de trabajo. En este repo se prioriza codear y ejecutar tests; la ejecución completa ocurre en el VPS.
 
 ---
 
@@ -221,7 +239,7 @@ Bloquearlo sería una mala decisión de producto.
 ## Arquitectura sugerida
 
 ```text
-src/main/java/com/seb/orchestrator
+src/main/java/com/sebastian/agent/orchestrator
   api
     ChatController
     dto/
@@ -283,18 +301,18 @@ Responsable de:
 - `OrchestratorUseCase`
 
 ### Domain model
-- `OrchestratorSession`
-- `IntentType`
-- `AgentTarget`
-- `RateLimitDecision`
+- `VisitorSession`
+- `ChatIntent`
+- `AgentType`
+- `RateLimitStatus`
 - `DelegatedRequest`
 - `DelegatedResponse`
 
 ### Domain ports
-- `SessionStore`
-- `RateLimitGateway`
+- `SessionRepository`
+- `RateLimitPolicy`
 - `IntentClassifier`
-- `AgentDelegationGateway`
+- `AgentClient`
 - `GuardianResponseBuilder`
 
 ### Infrastructure
@@ -311,10 +329,10 @@ Responsable de:
 
 Este proyecto debe pensar en interfaces internas como estas:
 
-- `SessionStore`
-- `RateLimitGateway`
+- `SessionRepository`
+- `RateLimitPolicy`
 - `IntentClassifier`
-- `AgentDelegationGateway`
+- `AgentClient`
 - `TracingPublisher` (futuro)
 - `ConversationMemoryStore` (futuro, solo si se justifica)
 
@@ -336,8 +354,10 @@ Response esperado de alto nivel:
 - `intent`
 - `agentUsed`
 - `sessionId`
-- `rateLimitStatus` opcional
+- `rateLimitStatus`
 - `metadata` opcional
+
+`rateLimitStatus` se modela internamente como enum de dominio para evitar strings mágicos en el caso de uso. En HTTP se expone como texto estable para que el frontend reciba JSON simple.
 
 No es necesario definir el contrato final completo desde el primer día, pero sí debe mantenerse consistente y fácil de evolucionar.
 

@@ -1,9 +1,6 @@
 package com.sebastian.agent.orchestrator.application.chat;
 
-import com.sebastian.agent.orchestrator.domain.model.AgentType;
-import com.sebastian.agent.orchestrator.domain.model.ChatIntent;
-import com.sebastian.agent.orchestrator.domain.model.OrchestratorResult;
-import com.sebastian.agent.orchestrator.domain.model.VisitorSession;
+import com.sebastian.agent.orchestrator.domain.model.*;
 import com.sebastian.agent.orchestrator.domain.ports.AgentClient;
 import com.sebastian.agent.orchestrator.domain.ports.IntentClassifier;
 import com.sebastian.agent.orchestrator.domain.ports.RateLimitPolicy;
@@ -22,7 +19,11 @@ class OrchestratorUseCaseTest {
     @Test
     void delegatesProfileIntentToProfileAgent() {
         InMemorySessionRepository sessionRepository = new InMemorySessionRepository();
-        RecordingAgentClient agentClient = new RecordingAgentClient("profile reply");
+        RecordingAgentClient agentClient = new RecordingAgentClient(
+                new AgentResponse(
+                        "profile reply",
+                        AgentType.PROFILE,
+                        AgentResponseStatus.OK));
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
@@ -36,7 +37,7 @@ class OrchestratorUseCaseTest {
         assertThat(result.reply()).isEqualTo("profile reply");
         assertThat(result.intent()).isEqualTo(ChatIntent.PROFILE);
         assertThat(result.agentUsed()).isEqualTo(AgentType.PROFILE);
-        assertThat(result.rateLimitStatus()).isEqualTo("ALLOWED");
+        assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
         assertThat(agentClient.lastAgentType).isEqualTo(AgentType.PROFILE);
         assertThat(agentClient.lastSessionId).isEqualTo("session-1");
         assertThat(sessionRepository.findById("session-1"))
@@ -48,7 +49,10 @@ class OrchestratorUseCaseTest {
     @Test
     void returnsClarificationForUnclearIntentWithoutDelegating() {
         InMemorySessionRepository sessionRepository = new InMemorySessionRepository();
-        RecordingAgentClient agentClient = new RecordingAgentClient("should not be used");
+        RecordingAgentClient agentClient = new RecordingAgentClient(new AgentResponse(
+                "should not be used",
+                AgentType.ORCHESTRATOR,
+                AgentResponseStatus.OK));
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.UNCLEAR,
@@ -61,7 +65,7 @@ class OrchestratorUseCaseTest {
         assertThat(result.sessionId()).isEqualTo("session-2");
         assertThat(result.intent()).isEqualTo(ChatIntent.UNCLEAR);
         assertThat(result.agentUsed()).isEqualTo(AgentType.ORCHESTRATOR);
-        assertThat(result.rateLimitStatus()).isEqualTo("ALLOWED");
+        assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
         assertThat(result.reply()).contains("Puedo ayudarte");
         assertThat(agentClient.wasCalled).isFalse();
         assertThat(sessionRepository.findById("session-2"))
@@ -73,7 +77,10 @@ class OrchestratorUseCaseTest {
     @Test
     void returnsGuardianWhenRateLimitBlocksProfileIntentWithoutDelegating() {
         InMemorySessionRepository sessionRepository = new InMemorySessionRepository();
-        RecordingAgentClient agentClient = new RecordingAgentClient("should not be used");
+        RecordingAgentClient agentClient = new RecordingAgentClient(new AgentResponse(
+                "should not be used",
+                AgentType.ORCHESTRATOR,
+                AgentResponseStatus.OK));
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
@@ -86,7 +93,7 @@ class OrchestratorUseCaseTest {
         assertThat(result.sessionId()).isEqualTo("session-3");
         assertThat(result.intent()).isEqualTo(ChatIntent.PROFILE);
         assertThat(result.agentUsed()).isEqualTo(AgentType.ORCHESTRATOR);
-        assertThat(result.rateLimitStatus()).isEqualTo("LIMITED");
+        assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.LIMITED);
         assertThat(result.reply()).contains("Has explorado bastante");
         assertThat(agentClient.wasCalled).isFalse();
         assertThat(sessionRepository.findById("session-3"))
@@ -98,7 +105,10 @@ class OrchestratorUseCaseTest {
     @Test
     void delegatesContactIntentAndMarksContactCaptureStarted() {
         InMemorySessionRepository sessionRepository = new InMemorySessionRepository();
-        RecordingAgentClient agentClient = new RecordingAgentClient("contact reply");
+        RecordingAgentClient agentClient = new RecordingAgentClient(new AgentResponse(
+                "contact reply",
+                AgentType.CONTACT,
+                AgentResponseStatus.OK));
         OrchestratorUseCase useCase = newUseCase(
                 sessionRepository,
                 message -> ChatIntent.CONTACT,
@@ -112,7 +122,7 @@ class OrchestratorUseCaseTest {
         assertThat(result.reply()).isEqualTo("contact reply");
         assertThat(result.intent()).isEqualTo(ChatIntent.CONTACT);
         assertThat(result.agentUsed()).isEqualTo(AgentType.CONTACT);
-        assertThat(result.rateLimitStatus()).isEqualTo("ALLOWED");
+        assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
         assertThat(agentClient.lastAgentType).isEqualTo(AgentType.CONTACT);
         assertThat(sessionRepository.findById("session-4"))
                 .get()
@@ -131,7 +141,10 @@ class OrchestratorUseCaseTest {
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
                 context -> true,
-                new RecordingAgentClient("profile reply")
+                new RecordingAgentClient(new AgentResponse(
+                                "profile reply",
+                                AgentType.PROFILE,
+                                AgentResponseStatus.OK))
         );
 
         OrchestratorResult result = useCase.handle(" ", "Tell me about Sebastian", "hero", "127.0.0.1");
@@ -157,7 +170,10 @@ class OrchestratorUseCaseTest {
                 sessionRepository,
                 message -> ChatIntent.PROFILE,
                 context -> true,
-                new RecordingAgentClient("profile reply")
+                 new RecordingAgentClient(new AgentResponse(
+                                "profile reply",
+                                AgentType.PROFILE,
+                                AgentResponseStatus.OK))
         );
 
         useCase.handle("session-5", "Tell me about projects", "projects", "127.0.0.1");
@@ -166,6 +182,35 @@ class OrchestratorUseCaseTest {
                 .get()
                 .extracting(VisitorSession::messageCount, VisitorSession::currentAgent)
                 .containsExactly(8, AgentType.PROFILE);
+    }
+
+    @Test
+    void returnsErrorWhenDelegatedAgentFails() {
+        InMemorySessionRepository sessionRepository = new InMemorySessionRepository();
+        RecordingAgentClient agentClient = new RecordingAgentClient(new AgentResponse(
+                "internal agent error",
+                AgentType.PROFILE,
+                AgentResponseStatus.ERROR
+        ));
+        OrchestratorUseCase useCase = newUseCase(
+                sessionRepository,
+                message -> ChatIntent.PROFILE,
+                context -> true,
+                agentClient
+        );
+
+        OrchestratorResult result = useCase.handle(
+                "session-error",
+                "Tell me about Sebastian",
+                "hero",
+                "127.0.0.1"
+        );
+
+        assertThat(result.sessionId()).isEqualTo("session-error");
+        assertThat(result.agentUsed()).isEqualTo(AgentType.ORCHESTRATOR);
+        assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
+        assertThat(result.responseType()).isEqualTo(ResponseType.ERROR);
+        assertThat(result.reply()).contains("No pude contactar");
     }
 
     private OrchestratorUseCase newUseCase(
@@ -198,21 +243,21 @@ class OrchestratorUseCaseTest {
     }
 
     private static class RecordingAgentClient implements AgentClient {
-        private final String reply;
+        private final AgentResponse agentResponse;
         private boolean wasCalled;
         private AgentType lastAgentType;
         private String lastSessionId;
 
-        private RecordingAgentClient(String reply) {
-            this.reply = reply;
+        private RecordingAgentClient(AgentResponse agentResponse) {
+            this.agentResponse = agentResponse;
         }
 
         @Override
-        public String sendMessage(AgentType agentType, String sessionId, String message) {
+        public AgentResponse sendMessage(AgentType agentType, String sessionId, String message) {
             wasCalled = true;
             lastAgentType = agentType;
             lastSessionId = sessionId;
-            return reply;
+            return agentResponse;
         }
     }
 }

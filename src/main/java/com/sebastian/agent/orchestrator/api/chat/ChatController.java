@@ -41,7 +41,8 @@ public class ChatController {
                 result.reply(),
                 result.intent().name(),
                 result.agentUsed().name(),
-                result.rateLimitStatus()
+                result.rateLimitStatus().name(),
+                result.responseType().name()
         );
     }
 

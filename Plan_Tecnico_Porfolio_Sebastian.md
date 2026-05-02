@@ -27,7 +27,9 @@ Este documento define el plan técnico completo para el desarrollo del portafoli
 
 ## 2. Arquitectura del sistema
 
-Monorepo con 4 proyectos independientes, desplegados en un VPS de DigitalOcean con Nginx como proxy inverso.
+Sistema compuesto por 4 proyectos/servicios independientes, desplegados en un VPS de DigitalOcean con Nginx como proxy inverso.
+
+Nota de alcance: este repositorio implementa únicamente `orchestrator`. `profile-agent`, `contact-agent` y `frontend` viven fuera de este repo para mantener servicios separados y comunicación A2A real por puerto.
 
 ```
 portfolio/
@@ -68,8 +70,8 @@ portfolio/
 
 | Dependencia | Orchestrator | Profile Agent | Contact Agent |
 |-------------|:---:|:---:|:---:|
-| Java 17+ | ✓ | ✓ | ✓ |
-| Spring Boot 3.x | ✓ | ✓ | ✓ |
+| Java 21 | ✓ | ✓ | ✓ |
+| Spring Boot 4.x | ✓ | ✓ | ✓ |
 | Google ADK Java 1.0.0 | ✓ | ✓ | ✓ |
 | Spring Data Redis + Bucket4j | ✓ | — | — |
 | Spring Mail | — | — | ✓ |
@@ -313,14 +315,14 @@ Widget tipo WhatsApp visible en todo el portafolio. Chips cambian según la secc
 
 > Los chips son shortcuts — al clickearlos se envían como mensaje normal al orchestrator.
 
-### 4.11 Estructura de paquetes — tres servicios
+### 4.11 Estructura de servicios
 
 ```
 portfolio/
 ├── frontend/                              ← React + Vite
 │
 ├── orchestrator/                          ← Spring Boot :8080
-│   └── src/main/java/com/seb/orchestrator/
+│   └── src/main/java/com/sebastian/agent/orchestrator/
 │       ├── api/
 │       │   ├── ChatController.java
 │       │   └── dto/  ChatRequest, ChatResponse
@@ -449,13 +451,12 @@ services:
 
 ## 8. Próximos pasos — Fase 1
 
-1. **Crear monorepo** con estructura `/orchestrator` `/profile-agent` `/contact-agent` `/frontend`
-2. Generar 3 proyectos Spring Boot en Spring Initializr con Java 17, Spring Web, Validation, Actuator
-3. Agregar `google-adk 1.0.0` al `pom.xml` de los 3 servicios
-4. Agregar Spring Data Redis + Bucket4j **solo al orchestrator**
-5. Agregar Spring Mail **solo al contact-agent**
-6. Crear Docker Compose con los 5 servicios y verificar que todos compilan y levantan
-7. Verificar conectividad Redis desde orchestrator antes de agregar lógica
+1. Consolidar el contrato del Orchestrator: DTO HTTP, enums de dominio, respuesta uniforme y metadata futura.
+2. Mantener tests unitarios y slice tests para sesión, rate limiting, routing y normalización de respuesta.
+3. Agregar observabilidad mínima en Orchestrator: sessionId, intención, agente destino, estado de rate limit y tiempos.
+4. Preparar `AgentClient` para delegación remota A2A sin acoplar el caso de uso a detalles del proveedor.
+5. Implementar los servicios `profile-agent` y `contact-agent` en proyectos separados cuando el contrato del Orchestrator esté estable.
+6. Validar la ejecución integrada en el VPS, no como flujo local por defecto.
 
 ---
 

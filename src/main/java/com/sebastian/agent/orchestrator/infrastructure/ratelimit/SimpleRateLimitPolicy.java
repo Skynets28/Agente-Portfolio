@@ -21,6 +21,6 @@ public class SimpleRateLimitPolicy implements RateLimitPolicy {
         if (rateLimitContext.intent() == ChatIntent.CONTACT) {
             return true;
         }
-        return rateLimitContext.messageCount() < orchestratorProperties.rateLimit().maxMessagesPerSession();
+        return rateLimitContext.messageCount() <= orchestratorProperties.rateLimit().maxMessagesPerSession();
     }
 }

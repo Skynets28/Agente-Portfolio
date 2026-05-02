@@ -5,6 +5,8 @@ import com.sebastian.agent.orchestrator.domain.ports.AgentClient;
 import com.sebastian.agent.orchestrator.domain.ports.IntentClassifier;
 import com.sebastian.agent.orchestrator.domain.ports.RateLimitPolicy;
 import com.sebastian.agent.orchestrator.domain.ports.SessionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 @Service
 public class OrchestratorUseCase {
+    private static final Logger log = LoggerFactory.getLogger(OrchestratorUseCase.class);
+
     private final SessionRepository sessionRepository;
     private final IntentClassifier intentClassifier;
     private final RateLimitPolicy rateLimitPolicy;
@@ -30,6 +34,7 @@ public class OrchestratorUseCase {
     }
 
     public OrchestratorResult handle(String sessionId, String message, String section, String clientIp) {
+        long startedAt = System.nanoTime();
         String resolvedSessionId = resolveSessionId(sessionId);
 
         VisitorSession session = findOrCreateSession(resolvedSessionId);
@@ -49,11 +54,21 @@ public class OrchestratorUseCase {
                     updateSessionAgent(updatedSession, AgentType.ORCHESTRATOR)
             );
 
+            logCompletion(
+                    savedSession.sessionId(),
+                    intent,
+                    AgentType.ORCHESTRATOR,
+                    RateLimitStatus.LIMITED,
+                    ResponseType.GUARDIAN,
+                    startedAt
+            );
+
             return new OrchestratorResult(savedSession.sessionId(),
                     guardianReply(),
                     intent,
                     AgentType.ORCHESTRATOR,
-                    "LIMITED"
+                    RateLimitStatus.LIMITED,
+                    ResponseType.GUARDIAN
             );
         }
 
@@ -64,19 +79,72 @@ public class OrchestratorUseCase {
                     updateSessionAgent(updatedSession, AgentType.ORCHESTRATOR)
             );
 
+            logCompletion(
+                    savedSession.sessionId(),
+                    intent,
+                    AgentType.ORCHESTRATOR,
+                    RateLimitStatus.ALLOWED,
+                    ResponseType.CLARIFICATION,
+                    startedAt
+            );
+
             return new OrchestratorResult(
                     savedSession.sessionId(),
                     clarificationReply(),
                     intent,
                     AgentType.ORCHESTRATOR,
-                    "ALLOWED"
+                    RateLimitStatus.ALLOWED,
+                    ResponseType.CLARIFICATION
             );
         }
 
-        String reply = agentClient.sendMessage(agentType, resolvedSessionId, message);
+        AgentResponse agentResponse = agentClient.sendMessage(agentType, resolvedSessionId, message);
+
+        if (agentResponse.status() == AgentResponseStatus.ERROR){
+            VisitorSession savedSession = sessionRepository.save(
+                    updateSessionAgent(updatedSession, AgentType.ORCHESTRATOR)
+            );
+
+            log.warn(
+                    "orchestration_agent_error sessionId={} intent={} failedAgent={} agentStatus={} durationMs={}",
+                    savedSession.sessionId(),
+                    intent,
+                    agentType,
+                    agentResponse.status(),
+                    durationMs(startedAt)
+            );
+            logCompletion(
+                    savedSession.sessionId(),
+                    intent,
+                    AgentType.ORCHESTRATOR,
+                    RateLimitStatus.ALLOWED,
+                    ResponseType.ERROR,
+                    startedAt
+            );
+
+            return new OrchestratorResult(
+                    savedSession.sessionId(),
+                    agentErrorReply(),
+                    intent,
+                    AgentType.ORCHESTRATOR,
+                    RateLimitStatus.ALLOWED,
+                    ResponseType.ERROR
+            );
+        }
+
+        String reply = agentResponse.reply();
 
         VisitorSession savedSession = sessionRepository.save(
                 updateSessionAgent(updatedSession, agentType)
+        );
+
+        logCompletion(
+                savedSession.sessionId(),
+                intent,
+                agentType,
+                RateLimitStatus.ALLOWED,
+                ResponseType.AGENT_REPLY,
+                startedAt
         );
 
         return new OrchestratorResult(
@@ -84,7 +152,8 @@ public class OrchestratorUseCase {
                 reply,
                 intent,
                 agentType,
-                "ALLOWED"
+                RateLimitStatus.ALLOWED,
+                ResponseType.AGENT_REPLY
         );
 
     }
@@ -163,5 +232,32 @@ public class OrchestratorUseCase {
                 intent,
                 messageCount
                 );
+    }
+
+    private String agentErrorReply() {
+        return "No pude contactar al agente en este momento. Intenta de nuevo en unos minutos";
+    }
+
+    private void logCompletion(
+            String sessionId,
+            ChatIntent intent,
+            AgentType agentUsed,
+            RateLimitStatus rateLimitStatus,
+            ResponseType responseType,
+            long startedAt
+    ) {
+        log.info(
+                "orchestration_completed sessionId={} intent={} agentUsed={} rateLimitStatus={} responseType={} durationMs={}",
+                sessionId,
+                intent,
+                agentUsed,
+                rateLimitStatus,
+                responseType,
+                durationMs(startedAt)
+        );
+    }
+
+    private long durationMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 }

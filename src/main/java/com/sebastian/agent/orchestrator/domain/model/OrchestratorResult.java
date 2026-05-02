@@ -5,6 +5,7 @@ public record OrchestratorResult(
         String reply,
         ChatIntent intent,
         AgentType agentUsed,
-        String rateLimitStatus
+        RateLimitStatus rateLimitStatus,
+        ResponseType responseType
 ) {
 }

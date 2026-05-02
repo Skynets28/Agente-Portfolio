@@ -5,6 +5,7 @@ public record ChatResponse(
         String reply,
         String intent,
         String agentUsed,
-        String rateLimitStatus
+        String rateLimitStatus,
+        String responseType
 ) {
 }
