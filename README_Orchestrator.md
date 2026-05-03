@@ -355,11 +355,95 @@ Response esperado de alto nivel:
 - `agentUsed`
 - `sessionId`
 - `rateLimitStatus`
+- `responseType`
 - `metadata` opcional
 
 `rateLimitStatus` se modela internamente como enum de dominio para evitar strings mágicos en el caso de uso. En HTTP se expone como texto estable para que el frontend reciba JSON simple.
+`responseType` también se modela como enum interno para distinguir respuesta delegada, aclaración, guardián o error controlado.
 
 No es necesario definir el contrato final completo desde el primer día, pero sí debe mantenerse consistente y fácil de evolucionar.
+
+---
+
+## Contrato temporal con sub-agentes
+
+Mientras se integra A2A real, el Orchestrator usa un contrato REST interno para comunicarse con Profile Agent y Contact Agent.
+
+Este contrato es temporal y pertenece a infraestructura. El caso de uso no depende de estos DTOs; el dominio sigue hablando mediante `AgentClient` y `AgentResponse`.
+
+### Endpoint remoto esperado
+
+```http
+POST /api/agent/message
+Content-Type: application/json
+```
+
+### Request
+
+```json
+{
+  "sessionId": "session-123",
+  "message": "Tell me about Sebastian"
+}
+```
+
+DTO en este repositorio:
+
+```text
+infrastructure/agents/dto/RemoteAgentRequest
+```
+
+Campos:
+- `sessionId`: identificador de sesión que el Orchestrator envía al sub-agente.
+- `message`: mensaje original del visitante.
+
+### Response
+
+```json
+{
+  "reply": "Sebastian is a backend engineer..."
+}
+```
+
+DTO en este repositorio:
+
+```text
+infrastructure/agents/dto/RemoteAgentResponse
+```
+
+Campos:
+- `reply`: texto que el sub-agente quiere devolver al visitante.
+
+### Normalización del resultado
+
+`RemoteAgentClient` traduce el contrato REST temporal al contrato interno del Orchestrator:
+
+- HTTP 2xx + `reply` no vacío → `AgentResponseStatus.OK`
+- HTTP error → `AgentResponseStatus.ERROR`
+- timeout → `AgentResponseStatus.ERROR`
+- response nula → `AgentResponseStatus.ERROR`
+- `reply` nulo o blank → `AgentResponseStatus.ERROR`
+
+Cuando el resultado es `ERROR`, el `OrchestratorUseCase` responde con `ResponseType.ERROR` y una respuesta controlada de fallback. El frontend no recibe detalles técnicos del sub-agente.
+
+### Configuración
+
+Las URLs y timeouts viven en `application.yaml`:
+
+```yaml
+orchestrator:
+  agents:
+    profile-base-url: http://localhost:9091
+    contact-base-url: http://localhost:9092
+    connect-timeout: 500ms
+    read-timeout: 2s
+```
+
+Estos valores se usan solo por el adaptador remoto. La intención es fallar rápido si un sub-agente no está disponible en el VPS.
+
+### Regla de evolución
+
+Cuando se integre A2A real, este contrato REST puede reemplazarse dentro de infraestructura sin cambiar el caso de uso principal. La frontera estable debe seguir siendo `AgentClient`.
 
 ---
 

@@ -14,10 +14,12 @@ class SimpleRateLimitPolicyTest {
     private final SimpleRateLimitPolicy policy = new SimpleRateLimitPolicy(
             new OrchestratorProperties(
                     new OrchestratorProperties.Session(Duration.ofHours(2), "session:"),
-                    new OrchestratorProperties.RateLimit(40, "rl:"),
+                    new OrchestratorProperties.RateLimit(40, "rl:", Duration.ofHours(1)),
                     new OrchestratorProperties.Agents(
                             "http://localhost:9091",
-                            "http://localhost:9092"
+                            "http://localhost:9092",
+                            Duration.ofMillis(500),
+                            Duration.ofSeconds(2)
                     )
             )
     );

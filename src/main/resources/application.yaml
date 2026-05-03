@@ -2,7 +2,7 @@ spring:
   application:
     name: orchestrator
   profiles:
-    active: simple
+    active: redis,remote
   data:
     redis:
       host: localhost
@@ -15,7 +15,9 @@ orchestrator:
   rate-limit:
     max-messages-per-session: 40
     key-prefix: "rl:"
+    window: 1h
   agents:
     profile-base-url: http://localhost:9091
     contact-base-url: http://localhost:9092
-
+    connect-timeout: 500ms
+    read-timeout: 2s

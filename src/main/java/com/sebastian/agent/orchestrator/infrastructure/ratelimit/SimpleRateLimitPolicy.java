@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"simple", "redis"})
+@Profile({"simple"})
 public class SimpleRateLimitPolicy implements RateLimitPolicy {
     private final OrchestratorProperties orchestratorProperties;
 

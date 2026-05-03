@@ -18,13 +18,16 @@ public record OrchestratorProperties(
 
     public record RateLimit(
             int maxMessagesPerSession,
-            String keyPrefix
+            String keyPrefix,
+            Duration window
     ) {
     }
 
     public record Agents (
             String profileBaseUrl,
-            String contactBaseUrl
+            String contactBaseUrl,
+            Duration connectTimeout,
+            Duration readTimeout
     ) {
     }
 }
