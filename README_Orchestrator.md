@@ -486,6 +486,142 @@ Este proyecto debe practicar control de abuso sin destruir la experiencia de usu
 ### Importante
 El rate limiting es una responsabilidad transversal del Orchestrator, no de los sub-agentes.
 
+### Implementación actual con Redis
+
+El perfil `redis` usa `RedisRateLimitPolicy` para contar requests por visitante y sesión mediante Redis.
+
+La llave usada por el contador tiene esta forma:
+
+```text
+rl:{clientIp}:{sessionId}
+```
+
+Ejemplo:
+
+```text
+rl:127.0.0.1:session-123
+```
+
+Los valores actuales viven en `application.yaml`:
+
+```yaml
+orchestrator:
+  rate-limit:
+    max-messages-per-session: 40
+    key-prefix: "rl:"
+    window: 1h
+```
+
+El contador se incrementa con `INCR`. Cuando Redis crea la llave y el contador queda en `1`, se asigna el TTL con `EXPIRE` usando `window`.
+
+Esto implementa una ventana fija:
+
+- mensajes `1` a `40` -> permitidos
+- mensaje `41` en adelante -> bloqueados
+- al vencer el TTL, Redis elimina la llave y el contador vuelve a empezar
+
+El TTL solo se asigna cuando el contador se crea. No se renueva en cada request para evitar convertir accidentalmente la política en una ventana deslizante.
+
+### Regla de producto
+
+La intención `CONTACT` no consume rate limit y siempre debe permitirse.
+
+La razón es que el contacto representa intención alta. Si un visitante ya exploró el perfil y después quiere contactar, bloquear ese flujo sería una mala decisión de producto.
+
+### Fallback si Redis falla
+
+Si Redis no está disponible o responde con error, la política actual permite la request y registra un warning.
+
+Esta decisión es `fail open`: el sistema prefiere preservar la experiencia del usuario antes que bloquear el chat por una falla temporal del componente de rate limit.
+
+Este comportamiento debe revisarse si el proyecto llega a producción pública con tráfico real, porque el trade-off cambia: `fail open` protege UX, pero reduce protección anti-abuso durante una caída de Redis.
+
+---
+
+## Inicio de sub-agentes
+
+Profile Agent y Contact Agent viven fuera de este repositorio. Para iniciar esos servicios, el contrato mínimo que deben cumplir es el descrito en `Contrato temporal con sub-agentes`.
+
+### Puertos esperados
+
+Mientras se mantiene el contrato REST temporal:
+
+- Profile Agent: `9091`
+- Contact Agent: `9092`
+
+Estos puertos coinciden con la configuración actual del Orchestrator:
+
+```yaml
+orchestrator:
+  agents:
+    profile-base-url: http://localhost:9091
+    contact-base-url: http://localhost:9092
+```
+
+En el VPS estos valores pueden cambiar por variable de entorno o configuración externa, pero la separación por puerto debe mantenerse para permitir comunicación entre servicios.
+
+### Endpoint mínimo requerido
+
+Cada sub-agente debe exponer:
+
+```http
+POST /api/agent/message
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "sessionId": "session-123",
+  "message": "Tell me about Sebastian"
+}
+```
+
+Response:
+
+```json
+{
+  "reply": "Agent reply"
+}
+```
+
+### Responsabilidad de cada sub-agente
+
+Profile Agent debe concentrarse en respuestas sobre perfil, stack, experiencia, proyectos y decisiones técnicas.
+
+Contact Agent debe concentrarse en detectar intención de contacto, pedir datos necesarios y preparar una respuesta útil para continuar el contacto.
+
+El Orchestrator no debe conocer los prompts, herramientas, memoria interna ni reglas conversacionales internas de cada sub-agente. Solo debe conocer el contrato de delegación.
+
+### Criterio para conectar con el Orchestrator
+
+Antes de integrar A2A real, cada sub-agente debe poder pasar esta prueba manual o automatizada:
+
+```bash
+curl -X POST http://localhost:9091/api/agent/message \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId":"session-123","message":"Tell me about Sebastian"}'
+```
+
+Y debe responder con JSON válido:
+
+```json
+{
+  "reply": "..."
+}
+```
+
+La misma regla aplica para Contact Agent en el puerto `9092`.
+
+### Evolución a A2A real
+
+El contrato REST temporal existe para avanzar incrementalmente.
+
+Cuando se integre A2A real, el cambio debe ocurrir dentro de infraestructura, reemplazando o adaptando `RemoteAgentClient`, sin cambiar el caso de uso principal ni el puerto interno `AgentClient`.
+
+La razón de esta decisión es mantener estable el núcleo del Orchestrator mientras evoluciona el mecanismo de transporte.
+
 ---
 
 ## Observabilidad mínima esperada

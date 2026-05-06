@@ -54,6 +54,38 @@ class RemoteAgentClientTest {
     }
 
     @Test
+    void returnsOkResponseWhenRemoteContactAgentReplies() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RemoteAgentClient client = new RemoteAgentClient(restClientBuilder, properties());
+
+        server.expect(requestTo("http://contact-agent.test/api/agent/message"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("""
+                        {
+                          "sessionId": "session-1",
+                          "message": "I want to contact Sebastian"
+                        }
+                        """))
+                .andRespond(withSuccess("""
+                        {
+                          "reply": "Contact remote reply"
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        AgentResponse response = client.sendMessage(
+                AgentType.CONTACT,
+                "session-1",
+                "I want to contact Sebastian"
+        );
+
+        assertThat(response.reply()).isEqualTo("Contact remote reply");
+        assertThat(response.agentType()).isEqualTo(AgentType.CONTACT);
+        assertThat(response.status()).isEqualTo(AgentResponseStatus.OK);
+        server.verify();
+    }
+
+    @Test
     void returnsErrorResponseWhenRemoteAgentFails() {
         RestClient.Builder restClientBuilder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
@@ -71,6 +103,32 @@ class RemoteAgentClientTest {
 
         assertThat(response.reply()).isEqualTo("Agent unavailable");
         assertThat(response.agentType()).isEqualTo(AgentType.CONTACT);
+        assertThat(response.status()).isEqualTo(AgentResponseStatus.ERROR);
+        server.verify();
+    }
+
+    @Test
+    void returnsErrorResponseWhenRemoteAgentReplyIsBlank() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        RemoteAgentClient client = new RemoteAgentClient(restClientBuilder, properties());
+
+        server.expect(requestTo("http://profile-agent.test/api/agent/message"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("""
+                        {
+                          "reply": " "
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        AgentResponse response = client.sendMessage(
+                AgentType.PROFILE,
+                "session-1",
+                "Tell me about Sebastian"
+        );
+
+        assertThat(response.reply()).isEqualTo("Agent unavailable");
+        assertThat(response.agentType()).isEqualTo(AgentType.PROFILE);
         assertThat(response.status()).isEqualTo(AgentResponseStatus.ERROR);
         server.verify();
     }

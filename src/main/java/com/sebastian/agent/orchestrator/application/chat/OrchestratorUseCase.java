@@ -49,7 +49,9 @@ public class OrchestratorUseCase {
                 updatedSession.messageCount()
         );
 
-        if (!rateLimitPolicy.isAllowed(rateLimitContext)) {
+        boolean rateLimitAllowed = rateLimitPolicy.isAllowed(rateLimitContext);
+
+        if (!rateLimitAllowed && intent != ChatIntent.CONTACT) {
             VisitorSession savedSession = sessionRepository.save(
                     updateSessionAgent(updatedSession, AgentType.ORCHESTRATOR)
             );

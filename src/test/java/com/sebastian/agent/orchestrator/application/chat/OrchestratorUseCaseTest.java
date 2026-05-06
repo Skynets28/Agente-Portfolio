@@ -38,8 +38,10 @@ class OrchestratorUseCaseTest {
         assertThat(result.intent()).isEqualTo(ChatIntent.PROFILE);
         assertThat(result.agentUsed()).isEqualTo(AgentType.PROFILE);
         assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
+        assertThat(result.responseType()).isEqualTo(ResponseType.AGENT_REPLY);
         assertThat(agentClient.lastAgentType).isEqualTo(AgentType.PROFILE);
         assertThat(agentClient.lastSessionId).isEqualTo("session-1");
+        assertThat(agentClient.lastMessage).isEqualTo("Tell me about Sebastian");
         assertThat(sessionRepository.findById("session-1"))
                 .get()
                 .extracting(VisitorSession::messageCount, VisitorSession::currentAgent)
@@ -66,6 +68,7 @@ class OrchestratorUseCaseTest {
         assertThat(result.intent()).isEqualTo(ChatIntent.UNCLEAR);
         assertThat(result.agentUsed()).isEqualTo(AgentType.ORCHESTRATOR);
         assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
+        assertThat(result.responseType()).isEqualTo(ResponseType.CLARIFICATION);
         assertThat(result.reply()).contains("Puedo ayudarte");
         assertThat(agentClient.wasCalled).isFalse();
         assertThat(sessionRepository.findById("session-2"))
@@ -94,6 +97,7 @@ class OrchestratorUseCaseTest {
         assertThat(result.intent()).isEqualTo(ChatIntent.PROFILE);
         assertThat(result.agentUsed()).isEqualTo(AgentType.ORCHESTRATOR);
         assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.LIMITED);
+        assertThat(result.responseType()).isEqualTo(ResponseType.GUARDIAN);
         assertThat(result.reply()).contains("Has explorado bastante");
         assertThat(agentClient.wasCalled).isFalse();
         assertThat(sessionRepository.findById("session-3"))
@@ -123,8 +127,44 @@ class OrchestratorUseCaseTest {
         assertThat(result.intent()).isEqualTo(ChatIntent.CONTACT);
         assertThat(result.agentUsed()).isEqualTo(AgentType.CONTACT);
         assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
+        assertThat(result.responseType()).isEqualTo(ResponseType.AGENT_REPLY);
         assertThat(agentClient.lastAgentType).isEqualTo(AgentType.CONTACT);
+        assertThat(agentClient.lastSessionId).isEqualTo("session-4");
+        assertThat(agentClient.lastMessage).isEqualTo("I want to contact Sebastian");
         assertThat(sessionRepository.findById("session-4"))
+                .get()
+                .extracting(
+                        VisitorSession::messageCount,
+                        VisitorSession::currentAgent,
+                        VisitorSession::contactCaptureStarted
+                )
+                .containsExactly(1, AgentType.CONTACT, true);
+    }
+
+    @Test
+    void delegatesContactIntentEvenWhenRateLimitPolicyBlocks() {
+        InMemorySessionRepository sessionRepository = new InMemorySessionRepository();
+        RecordingAgentClient agentClient = new RecordingAgentClient(new AgentResponse(
+                "contact reply",
+                AgentType.CONTACT,
+                AgentResponseStatus.OK));
+        OrchestratorUseCase useCase = newUseCase(
+                sessionRepository,
+                message -> ChatIntent.CONTACT,
+                context -> false,
+                agentClient
+        );
+
+        OrchestratorResult result = useCase.handle("session-contact-limit", "I want to contact Sebastian", "contact", "127.0.0.1");
+
+        assertThat(result.sessionId()).isEqualTo("session-contact-limit");
+        assertThat(result.reply()).isEqualTo("contact reply");
+        assertThat(result.intent()).isEqualTo(ChatIntent.CONTACT);
+        assertThat(result.agentUsed()).isEqualTo(AgentType.CONTACT);
+        assertThat(result.rateLimitStatus()).isEqualTo(RateLimitStatus.ALLOWED);
+        assertThat(result.responseType()).isEqualTo(ResponseType.AGENT_REPLY);
+        assertThat(agentClient.lastAgentType).isEqualTo(AgentType.CONTACT);
+        assertThat(sessionRepository.findById("session-contact-limit"))
                 .get()
                 .extracting(
                         VisitorSession::messageCount,
@@ -247,6 +287,7 @@ class OrchestratorUseCaseTest {
         private boolean wasCalled;
         private AgentType lastAgentType;
         private String lastSessionId;
+        private String lastMessage;
 
         private RecordingAgentClient(AgentResponse agentResponse) {
             this.agentResponse = agentResponse;
@@ -257,6 +298,7 @@ class OrchestratorUseCaseTest {
             wasCalled = true;
             lastAgentType = agentType;
             lastSessionId = sessionId;
+            lastMessage = message;
             return agentResponse;
         }
     }
