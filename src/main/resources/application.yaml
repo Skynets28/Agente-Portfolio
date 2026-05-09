@@ -2,7 +2,7 @@ spring:
   application:
     name: orchestrator
   profiles:
-    active: redis,remote
+    active: redis,remote,llm
   data:
     redis:
       host: localhost
@@ -21,3 +21,8 @@ orchestrator:
     contact-base-url: http://localhost:9092
     connect-timeout: 500ms
     read-timeout: 2s
+  intent-classifier:
+    provider: gemini
+    model: gemini-2.5-flash
+    timeout: 2s
+    api-key: ${GEMINI_API_KEY:}

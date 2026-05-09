@@ -8,7 +8,8 @@ import java.time.Duration;
 public record OrchestratorProperties(
         Session session,
         RateLimit rateLimit,
-        Agents agents
+        Agents agents,
+        IntentClassifierProperties intentClassifier
 ) {
     public record Session(
             Duration ttl,
@@ -28,6 +29,14 @@ public record OrchestratorProperties(
             String contactBaseUrl,
             Duration connectTimeout,
             Duration readTimeout
+    ) {
+    }
+
+    public record IntentClassifierProperties(
+            String provider,
+            String model,
+            Duration timeout,
+            String apiKey
     ) {
     }
 }

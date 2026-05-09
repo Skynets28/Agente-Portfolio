@@ -7,6 +7,8 @@ import com.sebastian.agent.orchestrator.domain.ports.AgentClient;
 import com.sebastian.agent.orchestrator.infrastructure.agents.dto.RemoteAgentRequest;
 import com.sebastian.agent.orchestrator.infrastructure.agents.dto.RemoteAgentResponse;
 import com.sebastian.agent.orchestrator.infrastructure.config.OrchestratorProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,6 +17,7 @@ import org.springframework.web.client.RestClientException;
 @Component
 @Profile("remote")
 public class RemoteAgentClient implements AgentClient {
+    private static final Logger log = LoggerFactory.getLogger(RemoteAgentClient.class);
     private static final String AGENT_MESSAGE_PATH = "/api/agent/message";
 
     private final RestClient profileAgentClient;
@@ -34,7 +37,15 @@ public class RemoteAgentClient implements AgentClient {
 
     @Override
     public AgentResponse sendMessage(AgentType agentType, String sessionId, String message) {
+        long startedAt = System.nanoTime();
+
         if (agentType == AgentType.ORCHESTRATOR) {
+            log.warn(
+                    "remote_agent_rejected sessionId={} agentType={} reason=orchestrator_is_not_remote durationMs={}",
+                    sessionId,
+                    agentType,
+                    durationMs(startedAt)
+            );
             return errorResponse(agentType);
         }
 
@@ -47,8 +58,22 @@ public class RemoteAgentClient implements AgentClient {
                     .body(RemoteAgentResponse.class);
 
             if (response == null || response.reply() == null || response.reply().isBlank()) {
+                log.warn(
+                        "remote_agent_empty_response sessionId={} agentType={} durationMs={}",
+                        sessionId,
+                        agentType,
+                        durationMs(startedAt)
+                );
                 return errorResponse(agentType);
             }
+
+            log.info(
+                    "remote_agent_completed sessionId={} agentType={} status={} durationMs={}",
+                    sessionId,
+                    agentType,
+                    AgentResponseStatus.OK,
+                    durationMs(startedAt)
+            );
 
             return new AgentResponse(
                     response.reply(),
@@ -56,6 +81,13 @@ public class RemoteAgentClient implements AgentClient {
                     AgentResponseStatus.OK
             );
         } catch (RestClientException exception) {
+            log.warn(
+                    "remote_agent_failed sessionId={} agentType={} durationMs={}",
+                    sessionId,
+                    agentType,
+                    durationMs(startedAt),
+                    exception
+            );
             return errorResponse(agentType);
         }
     }
@@ -74,5 +106,9 @@ public class RemoteAgentClient implements AgentClient {
                 agentType,
                 AgentResponseStatus.ERROR
         );
+    }
+
+    private long durationMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 }

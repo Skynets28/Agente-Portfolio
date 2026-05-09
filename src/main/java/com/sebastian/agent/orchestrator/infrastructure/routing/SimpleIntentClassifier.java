@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"simple", "redis"})
+@Profile({"simple"})
 public class SimpleIntentClassifier implements IntentClassifier {
     @Override
     public  ChatIntent classify(String message) {

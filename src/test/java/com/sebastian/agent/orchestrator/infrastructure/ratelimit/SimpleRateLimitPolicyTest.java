@@ -20,6 +20,12 @@ class SimpleRateLimitPolicyTest {
                             "http://localhost:9092",
                             Duration.ofMillis(500),
                             Duration.ofSeconds(2)
+                    ),
+                    new OrchestratorProperties.IntentClassifierProperties(
+                            "gemini",
+                            "gemini-2.5-flash",
+                            Duration.ofSeconds(2),
+                            "test-api-key"
                     )
             )
     );
